@@ -8,7 +8,17 @@
     <style>
         /* --- CSS STYLING --- */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; height: 100vh; overflow: hidden; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #121212; 
+            color: #e0e0e0; 
+            
+            /* PERBAIKAN UTAMA DI SINI */
+            height: 100dvh; /* Menggunakan Dynamic Viewport Height */
+            width: 100%;
+            position: fixed; /* Mengunci layar agar tidak bisa discroll body-nya */
+            overflow: hidden; 
+        }
 
         /* Login Screen */
         #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
@@ -17,7 +27,13 @@
         #login-screen button:hover { background: #008f6f; }
 
         /* Chat Screen */
-        #chat-screen { display: none; height: 100%; display: flex; flex-direction: column; }
+        #chat-screen { 
+            display: none; 
+            height: 100%; /* Mengikuti tinggi body yang sudah fix */
+            width: 100%;
+            display: flex; 
+            flex-direction: column; 
+        }
         
         header { background: #1f2c34; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a3942; }
         .room-info h2 { font-size: 18px; color: #fff; }
@@ -54,7 +70,16 @@
         .user-item { padding: 8px 0; border-bottom: 1px solid #2a3942; color: #d1d7db; font-size: 14px; }
         .user-item::before { content: "● "; color: #00a884; }
 
-        .input-area { background: #1f2c34; padding: 10px 20px; display: flex; align-items: center; gap: 10px; }
+        .input-area { 
+            background: #1f2c34; 
+            padding: 10px 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            
+            /* Tambahan untuk iOS Safari agar tidak nempel banget di bawah */
+            padding-bottom: env(safe-area-inset-bottom, 10px); 
+        }
         .input-area input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #2a3942; color: white; outline: none; }
         .input-area button { padding: 10px 20px; background: #00a884; border: none; border-radius: 8px; color: white; cursor: pointer; }
 
