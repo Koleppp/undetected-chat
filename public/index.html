@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="image/msg.png">
+    <title>Undetected Chat ❗️</title>
+    <style>
+        /* --- CSS STYLING --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; height: 100vh; overflow: hidden; }
+
+        /* Login Screen */
+        #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        #login-screen input { padding: 15px; width: 300px; border-radius: 25px; border: none; font-size: 16px; outline: none; text-align: center; margin-bottom: 10px; }
+        #login-screen button { padding: 12px 30px; border-radius: 25px; border: none; background: #00a884; color: white; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        #login-screen button:hover { background: #008f6f; }
+
+        /* Chat Screen */
+        #chat-screen { display: none; height: 100%; display: flex; flex-direction: column; }
+        
+        header { background: #1f2c34; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a3942; }
+        .room-info h2 { font-size: 18px; color: #fff; }
+        .room-stats { font-size: 14px; color: #8696a0; text-align: right; }
+        .timer { color: #f15c6d; font-weight: bold; }
+
+        .btn-exit {
+            padding: 8px 15px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            margin-left: 10px;
+            transition: 0.2s;
+        }
+        .btn-exit:hover { background-color: #b71c1c; }
+
+        .main-content { flex: 1; display: flex; overflow: hidden; }
+        
+        #chat-area { flex: 1; display: flex; flex-direction: column; background-color: #0b141a; position: relative; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .message { max-width: 60%; padding: 10px 15px; border-radius: 10px; font-size: 15px; line-height: 1.4; position: relative; word-wrap: break-word; }
+        .message.mine { align-self: flex-end; background: #005c4b; color: white; border-top-right-radius: 0; }
+        .message.theirs { align-self: flex-start; background: #202c33; color: white; border-top-left-radius: 0; }
+        .message .sender { font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 4px; display: block; font-weight: bold; }
+        .system-msg { align-self: center; background: #1f2c34; padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #8696a0; margin: 10px 0; }
+
+        #user-sidebar { width: 200px; background: #111b21; border-left: 1px solid #2a3942; padding: 15px; overflow-y: auto; display: none; }
+        #user-sidebar h3 { font-size: 14px; color: #8696a0; margin-bottom: 10px; text-transform: uppercase; }
+        .user-item { padding: 8px 0; border-bottom: 1px solid #2a3942; color: #d1d7db; font-size: 14px; }
+        .user-item::before { content: "● "; color: #00a884; }
+
+        .input-area { background: #1f2c34; padding: 10px 20px; display: flex; align-items: center; gap: 10px; }
+        .input-area input { flex: 1; padding: 12px; border-radius: 8px; border: none; background: #2a3942; color: white; outline: none; }
+        .input-area button { padding: 10px 20px; background: #00a884; border: none; border-radius: 8px; color: white; cursor: pointer; }
+
+        .hidden { display: none !important; }
+
+        @media (min-width: 768px) {
+            #user-sidebar { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h1 style="color:white; margin-bottom:20px;">Undetected Chat</h1>
+        <p style="color:#aaa; margin-bottom:20px;">Masukkan Kode Room Bebas</p>
+        <input type="text" id="room-input" placeholder="Contoh : AK47">
+        <button onclick="joinRoom()">MASUK ROOM</button>
+    </div>
+
+    <div id="chat-screen" class="hidden">
+        <header>
+            <div class="room-info">
+                <h2 id="room-title">Room: -</h2>
+                <small id="my-name">Anda: -</small>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <div class="room-stats">
+                    <div id="timer-display" class="timer">10:00</div>
+                    <div id="online-count">Online: 1</div>
+                </div>
+                <button onclick="leaveRoom()" class="btn-exit">KELUAR</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div id="chat-area">
+                <div id="messages"></div>
+                <div class="input-area">
+                    <input type="text" id="msg-input" placeholder="Ketik pesan..." onkeypress="handleEnter(event)">
+                    <button onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+            
+            <div id="user-sidebar">
+                <h3>List Hewan</h3>
+                <div id="user-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myName = "";
+        let timerInterval;
+
+        // --- FUNGSI MASUK ROOM ---
+        function joinRoom() {
+            const room = document.getElementById('room-input').value;
+            if (!room) return alert("Isi nama room dulu bos!");
+            
+            socket.emit('join_room', room);
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('chat-screen').classList.remove('hidden');
+            document.getElementById('room-title').innerText = "Room: " + room;
+        }
+
+        // --- FUNGSI KELUAR ROOM (Sekarang sudah di luar joinRoom) ---
+        function leaveRoom() {
+            console.log("Keluar room...");
+            socket.emit('leave_room');
+
+            // Bersihkan Data
+            document.getElementById('messages').innerHTML = '';
+            document.getElementById('user-list-container').innerHTML = '';
+            document.getElementById('room-input').value = ''; 
+            
+            // Pindah Tampilan
+            document.getElementById('chat-screen').classList.add('hidden');
+            document.getElementById('login-screen').classList.remove('hidden');
+
+            // Reset Info
+            document.getElementById('room-title').innerText = "Room: -";
+            document.getElementById('my-name').innerText = "Anda: -";
+
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        // --- SOCKET EVENT LISTENERS ---
+
+        // 1. Inisialisasi Data
+        socket.on('init_room', (data) => {
+            myName = data.name;
+            document.getElementById('my-name').innerText = "Anda: " + myName;
+            startTimer(data.expiresAt);
+        });
+
+        // 2. Terima Pesan
+        socket.on('receive_message', (data) => {
+            const isMine = data.user === myName;
+            const bubbleClass = isMine ? 'mine' : 'theirs';
+            addMessage(`
+                <span class="sender">${isMine ? 'Anda' : data.user}</span>
+                ${data.text}
+            `, bubbleClass);
+        });
+
+        // 3. Pesan Sistem
+        socket.on('system_message', (msg) => {
+            const div = document.createElement('div');
+            div.className = 'system-msg';
+            div.innerText = msg;
+            document.getElementById('messages').appendChild(div);
+            scrollToBottom();
+        });
+
+        // 4. Update List User
+        socket.on('update_users', (users) => {
+            const listContainer = document.getElementById('user-list-container');
+            listContainer.innerHTML = ""; 
+            users.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.innerText = user + (user === myName ? " (Anda)" : "");
+                listContainer.appendChild(div);
+            });
+            document.getElementById('online-count').innerText = "Online: " + users.length;
+        });
+
+        // --- FUNGSI BANTUAN ---
+
+        function sendMessage() {
+            const input = document.getElementById('msg-input');
+            if (input.value.trim()) {
+                socket.emit('send_message', input.value);
+                input.value = '';
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function addMessage(html, type) {
+            const container = document.getElementById('messages');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerHTML = html;
+            container.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function startTimer(endTime) {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const distance = endTime - now;
+
+                if (distance < 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timer-display').innerText = "HABIS";
+                    return;
+                }
+
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('timer-display').innerText = 
+                    (minutes < 10 ? "0" : "") + minutes + ":" + 
+                    (seconds < 10 ? "0" : "") + seconds;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
